@@ -85,4 +85,87 @@ describe('PlanTable', () => {
       expect(screen.getByRole('button', { name: 'Override Wed 14:30 slot' })).toHaveTextContent('Manual Charge')
     })
   })
+
+  describe('value override menus (#16)', () => {
+    const row = () => makePlanRow({ time: '2026-08-26T14:30:00+01:00', slot_minute: 870, import_rate: 24.5, export_rate: 15, soc_percent: 62, load_forecast: 0.2 })
+
+    async function captureRateOverrideBody() {
+      let body: URLSearchParams | undefined
+      server.use(
+        http.post(`${DEFAULT_BASE_URL}/rate_override`, async ({ request }) => {
+          body = new URLSearchParams(await request.text())
+          return HttpResponse.json({ success: true })
+        }),
+      )
+      return () => body
+    }
+
+    it('posts the right payload from the import rate cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable rows={[row()]} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override import rate/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set Import Rate' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set Import Rate value' }), '30')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('rate')).toBe('30'))
+      expect(getBody()?.get('time')).toBe('Wed 14:30')
+      expect(getBody()?.get('action')).toBe('Set Import')
+    })
+
+    it('posts the right payload from the export rate cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable rows={[row()]} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override export rate/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set Export Rate' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set Export Rate value' }), '5')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Set Export'))
+      expect(getBody()?.get('rate')).toBe('5')
+    })
+
+    it('posts the right payload from the SOC cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable rows={[row()]} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override SOC/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set SOC' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set SOC value' }), '80')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Set SOC'))
+      expect(getBody()?.get('rate')).toBe('80')
+    })
+
+    it('posts the right payload from the load cell, including a Clear', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable rows={[row()]} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override load/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Clear Load' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Clear Load'))
+      expect(getBody()?.get('time')).toBe('Wed 14:30')
+    })
+
+    it('reflects active value overrides from the overrides prop', () => {
+      const overrides: PlanOverrides = {
+        ...noOverrides,
+        manual_import_rates: [{ minutes: 870, rate: 45 }],
+        manual_export_rates: [{ minutes: 870, rate: 8 }],
+        manual_soc: [{ minutes: 870, target: 90 }],
+        manual_load_adjust: [{ minutes: 870, adjustment: 1.5 }],
+      }
+
+      render(<PlanTable rows={[row()]} overrides={overrides} />)
+
+      expect(screen.getByRole('button', { name: /Override import rate/ })).toHaveTextContent('45.00')
+      expect(screen.getByRole('button', { name: /Override export rate/ })).toHaveTextContent('8.00')
+      expect(screen.getByRole('button', { name: /Override SOC/ })).toHaveTextContent('90')
+      expect(screen.getByRole('button', { name: /Override load/ })).toHaveTextContent('1.50')
+    })
+  })
 })

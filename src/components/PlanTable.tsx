@@ -1,7 +1,8 @@
 import { OverrideMenu } from './OverrideMenu'
-import { usePlanOverride } from '../hooks/usePredbat'
+import { RateOverrideMenu } from './RateOverrideMenu'
+import { usePlanOverride, useRateOverride } from '../hooks/usePredbat'
 import { formatOverrideTime } from '../lib/time'
-import type { PlanOverrideAction, PlanOverrides, PlanRow } from '../api/types'
+import type { PlanOverrideAction, PlanOverrides, PlanRow, RateOverrideAction } from '../api/types'
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -54,6 +55,54 @@ function TimeCell({ row, overrides }: { row: PlanRow; overrides: PlanOverrides |
   )
 }
 
+/** Looks up the override value for a slot from one of `PlanOverrides`' `manual_*` value arrays, if any. */
+function findOverrideValue<T extends { minutes: number }>(entries: T[] | undefined, slotMinute: number, pick: (entry: T) => number): number | null {
+  const entry = entries?.find((e) => e.minutes === slotMinute)
+  return entry === undefined ? null : pick(entry)
+}
+
+function ValueOverrideCell({
+  time,
+  displayValue,
+  overrideValue,
+  setAction,
+  clearAction,
+  setLabel,
+  clearLabel,
+  menuLabel,
+  formatValue,
+  inputStep,
+}: {
+  time: string
+  displayValue: number
+  overrideValue: number | null
+  setAction: RateOverrideAction
+  clearAction: RateOverrideAction
+  setLabel: string
+  clearLabel: string
+  menuLabel: string
+  formatValue: (value: number) => string
+  inputStep?: string
+}) {
+  const rateOverride = useRateOverride()
+  const active = overrideValue !== null
+
+  return (
+    <td className="px-3 py-1.5 text-right">
+      <RateOverrideMenu
+        trigger={formatValue(active ? overrideValue : displayValue)}
+        menuLabel={menuLabel}
+        setLabel={setLabel}
+        clearLabel={clearLabel}
+        active={active}
+        inputStep={inputStep}
+        onSet={(rate) => rateOverride.mutate({ time: formatOverrideTime(time), action: setAction, rate })}
+        onClear={() => rateOverride.mutate({ time: formatOverrideTime(time), action: clearAction, rate: '0' })}
+      />
+    </td>
+  )
+}
+
 export function PlanTable({ rows, overrides }: { rows: PlanRow[]; overrides?: PlanOverrides }) {
   return (
     <div className="max-h-[32rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
@@ -66,6 +115,7 @@ export function PlanTable({ rows, overrides }: { rows: PlanRow[]; overrides?: Pl
             <th className="px-3 py-2 text-right">Export p/kWh</th>
             <th className="px-3 py-2 text-right">SOC %</th>
             <th className="px-3 py-2 text-right">Cost</th>
+            <th className="px-3 py-2 text-right">Load kWh</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -75,10 +125,52 @@ export function PlanTable({ rows, overrides }: { rows: PlanRow[]; overrides?: Pl
               <td className="px-3 py-1.5" style={{ color: row.state_color || undefined }}>
                 {row.state_text}
               </td>
-              <td className="px-3 py-1.5 text-right">{row.import_rate.toFixed(2)}</td>
-              <td className="px-3 py-1.5 text-right">{row.export_rate.toFixed(2)}</td>
-              <td className="px-3 py-1.5 text-right">{row.soc_percent.toFixed(0)}</td>
+              <ValueOverrideCell
+                time={row.time}
+                displayValue={row.import_rate}
+                overrideValue={findOverrideValue(overrides?.manual_import_rates, row.slot_minute, (e) => e.rate)}
+                setAction="Set Import"
+                clearAction="Clear Import"
+                setLabel="Set Import Rate"
+                clearLabel="Clear Import Rate"
+                menuLabel={`Override import rate at ${formatOverrideTime(row.time)}`}
+                formatValue={(v) => v.toFixed(2)}
+              />
+              <ValueOverrideCell
+                time={row.time}
+                displayValue={row.export_rate}
+                overrideValue={findOverrideValue(overrides?.manual_export_rates, row.slot_minute, (e) => e.rate)}
+                setAction="Set Export"
+                clearAction="Clear Export"
+                setLabel="Set Export Rate"
+                clearLabel="Clear Export Rate"
+                menuLabel={`Override export rate at ${formatOverrideTime(row.time)}`}
+                formatValue={(v) => v.toFixed(2)}
+              />
+              <ValueOverrideCell
+                time={row.time}
+                displayValue={row.soc_percent}
+                overrideValue={findOverrideValue(overrides?.manual_soc, row.slot_minute, (e) => e.target)}
+                setAction="Set SOC"
+                clearAction="Clear SOC"
+                setLabel="Set SOC"
+                clearLabel="Clear SOC"
+                menuLabel={`Override SOC at ${formatOverrideTime(row.time)}`}
+                formatValue={(v) => v.toFixed(0)}
+                inputStep="1"
+              />
               <td className="px-3 py-1.5 text-right">{row.total_cost.toFixed(2)}</td>
+              <ValueOverrideCell
+                time={row.time}
+                displayValue={row.load_forecast}
+                overrideValue={findOverrideValue(overrides?.manual_load_adjust, row.slot_minute, (e) => e.adjustment)}
+                setAction="Set Load"
+                clearAction="Clear Load"
+                setLabel="Set Load"
+                clearLabel="Clear Load"
+                menuLabel={`Override load at ${formatOverrideTime(row.time)}`}
+                formatValue={(v) => v.toFixed(2)}
+              />
             </tr>
           ))}
         </tbody>
