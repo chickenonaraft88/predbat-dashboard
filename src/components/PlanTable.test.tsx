@@ -1,16 +1,37 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
+import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PlanTable } from './PlanTable'
+import { DEFAULT_BASE_URL } from '../api/connection'
+import type { PlanOverrides, RawPlan } from '../api/types'
 import { makePlanRow, samplePlanData } from '../test/msw/handlers'
-import type { RawPlan } from '../api/types'
+import { renderWithProviders } from '../test/renderWithProviders'
+import { server } from '../test/msw/server'
+
+function render(ui: ReactElement) {
+  return renderWithProviders(ui)
+}
 
 function makePlan(overrides: Partial<RawPlan> = {}): RawPlan {
   return {
     ...(samplePlanData.plan as RawPlan),
     ...overrides,
   }
+}
+
+const noOverrides: PlanOverrides = {
+  manual_charge_times: [],
+  manual_export_times: [],
+  manual_freeze_charge_times: [],
+  manual_freeze_export_times: [],
+  manual_demand_times: [],
+  manual_import_rates: [],
+  manual_export_rates: [],
+  manual_load_adjust: [],
+  manual_soc: [],
 }
 
 describe('PlanTable', () => {
@@ -95,10 +116,12 @@ describe('PlanTable', () => {
 
     render(<PlanTable plan={makePlan({ rows })} />)
 
-    const importCell = screen.getByText('45.00')
-    const exportCell = screen.getByText('2.00')
-    expect(importCell).toHaveStyle({ backgroundColor: '#F18261' })
-    expect(exportCell).toHaveStyle({ backgroundColor: '#dcdcdc' })
+    const importCell = screen.getByText('45.00').closest('td')
+    const exportCell = screen.getByText('2.00').closest('td')
+    expect(importCell).not.toBeNull()
+    expect(exportCell).not.toBeNull()
+    expect(importCell!).toHaveStyle({ backgroundColor: '#F18261' })
+    expect(exportCell!).toHaveStyle({ backgroundColor: '#dcdcdc' })
   })
 
   it('renders a single-tone state cell when state2_text is not set', () => {
@@ -148,7 +171,7 @@ describe('PlanTable', () => {
 
     render(<PlanTable plan={plan} />)
 
-    await user.hover(screen.getByRole('button'))
+    await user.hover(within(screen.getByTestId('state-cell')).getByRole('button'))
     expect(screen.getByRole('tooltip')).toHaveTextContent('Charging up to 80% at 3.50kW at the import rate for this slot of (12.34p/kWh).')
   })
 
@@ -157,7 +180,7 @@ describe('PlanTable', () => {
 
     render(<PlanTable plan={makePlan({ rows })} />)
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(within(screen.getByTestId('state-cell')).queryByRole('button')).not.toBeInTheDocument()
   })
 
   describe('the "now" row', () => {
@@ -281,5 +304,131 @@ describe('PlanTable', () => {
     expect(screen.getByText('iBoost kWh')).toBeInTheDocument()
     expect(screen.getByText('CO2 g/kWh')).toBeInTheDocument()
     expect(screen.getByText('CO2 kg')).toBeInTheDocument()
+  })
+
+  describe('plan override menu (#15)', () => {
+    it('opens on the Time cell with the manual state options', async () => {
+      const rows = [makePlanRow({ time: '2026-08-26T14:30:00+01:00' })]
+      render(<PlanTable plan={makePlan({ rows })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Override Wed 14:30 slot' }))
+
+      const menu = screen.getByRole('menu')
+      expect(menu).toBeInTheDocument()
+      for (const label of ['Manual Demand', 'Manual Charge', 'Manual Export', 'Manual Freeze Charge', 'Manual Freeze Export', 'Clear']) {
+        expect(screen.getByRole('menuitem', { name: label })).toBeInTheDocument()
+      }
+    })
+
+    it('posts the right payload when a state override is chosen', async () => {
+      let body: URLSearchParams | undefined
+      server.use(
+        http.post(`${DEFAULT_BASE_URL}/plan_override`, async ({ request }) => {
+          body = new URLSearchParams(await request.text())
+          return HttpResponse.json({ success: true })
+        }),
+      )
+
+      const rows = [makePlanRow({ time: '2026-08-26T14:30:00+01:00' })]
+      render(<PlanTable plan={makePlan({ rows })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Override Wed 14:30 slot' }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Manual Charge' }))
+
+      await waitFor(() => expect(body?.get('time')).toBe('Wed 14:30'))
+      expect(body?.get('action')).toBe('Manual Charge')
+    })
+
+    it('reflects an active override from the overrides prop', () => {
+      const rows = [makePlanRow({ time: '2026-08-26T14:30:00+01:00', slot_minute: 870 })]
+      const overrides: PlanOverrides = { ...noOverrides, manual_charge_times: [870] }
+
+      render(<PlanTable plan={makePlan({ rows })} overrides={overrides} />)
+
+      expect(screen.getByRole('button', { name: 'Override Wed 14:30 slot' })).toHaveTextContent('Manual Charge')
+    })
+  })
+
+  describe('value override menus (#16)', () => {
+    const row = () => makePlanRow({ time: '2026-08-26T14:30:00+01:00', slot_minute: 870, import_rate: 24.5, export_rate: 15, soc_percent: 62, load_forecast: 0.2 })
+
+    async function captureRateOverrideBody() {
+      let body: URLSearchParams | undefined
+      server.use(
+        http.post(`${DEFAULT_BASE_URL}/rate_override`, async ({ request }) => {
+          body = new URLSearchParams(await request.text())
+          return HttpResponse.json({ success: true })
+        }),
+      )
+      return () => body
+    }
+
+    it('posts the right payload from the import rate cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable plan={makePlan({ rows: [row()] })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override import rate/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set Import Rate' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set Import Rate value' }), '30')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('rate')).toBe('30'))
+      expect(getBody()?.get('time')).toBe('Wed 14:30')
+      expect(getBody()?.get('action')).toBe('Set Import')
+    })
+
+    it('posts the right payload from the export rate cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable plan={makePlan({ rows: [row()] })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override export rate/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set Export Rate' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set Export Rate value' }), '5')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Set Export'))
+      expect(getBody()?.get('rate')).toBe('5')
+    })
+
+    it('posts the right payload from the SOC cell', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable plan={makePlan({ rows: [row()] })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override SOC/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Set SOC' }))
+      await userEvent.type(screen.getByRole('spinbutton', { name: 'Set SOC value' }), '80')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Set SOC'))
+      expect(getBody()?.get('rate')).toBe('80')
+    })
+
+    it('posts the right payload from the load cell, including a Clear', async () => {
+      const getBody = await captureRateOverrideBody()
+      render(<PlanTable plan={makePlan({ rows: [row()] })} overrides={noOverrides} />)
+
+      await userEvent.click(screen.getByRole('button', { name: /Override load/ }))
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Clear Load' }))
+
+      await waitFor(() => expect(getBody()?.get('action')).toBe('Clear Load'))
+      expect(getBody()?.get('time')).toBe('Wed 14:30')
+    })
+
+    it('reflects active value overrides from the overrides prop', () => {
+      const overrides: PlanOverrides = {
+        ...noOverrides,
+        manual_import_rates: [{ minutes: 870, rate: 45 }],
+        manual_export_rates: [{ minutes: 870, rate: 8 }],
+        manual_soc: [{ minutes: 870, target: 90 }],
+        manual_load_adjust: [{ minutes: 870, adjustment: 1.5 }],
+      }
+
+      render(<PlanTable plan={makePlan({ rows: [row()] })} overrides={overrides} />)
+
+      expect(screen.getByRole('button', { name: /Override import rate/ })).toHaveTextContent('45.00')
+      expect(screen.getByRole('button', { name: /Override export rate/ })).toHaveTextContent('8.00')
+      expect(screen.getByRole('button', { name: /Override SOC/ })).toHaveTextContent('90')
+      expect(screen.getByRole('button', { name: /Override load/ })).toHaveTextContent('1.50')
+    })
   })
 })

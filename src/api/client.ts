@@ -1,4 +1,4 @@
-import type { PingResponse, PlanDataResponse, StatusResponse } from './types'
+import type { OverrideResponse, PingResponse, PlanDataResponse, PlanOverridePayload, RateOverridePayload, StatusResponse } from './types'
 
 export class PredbatApiError extends Error {
   status?: number
@@ -34,10 +34,34 @@ async function getJson<T>(baseUrl: string, path: string, params?: Record<string,
   return (await response.json()) as T
 }
 
+async function postForm<T>(baseUrl: string, path: string, body: Record<string, string>): Promise<T> {
+  const url = new URL(path, baseUrl)
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(body),
+    })
+  } catch {
+    // A network/CORS failure here almost always means the target Predbat instance
+    // has not set web_cors_origins to include this dashboard's origin.
+    throw new PredbatApiError(`Could not reach Predbat at ${baseUrl}. Check the URL and that web_cors_origins in apps.yaml includes this page's origin.`)
+  }
+
+  if (!response.ok) {
+    throw new PredbatApiError(`Predbat API returned ${response.status} for ${path}`, response.status)
+  }
+
+  return (await response.json()) as T
+}
+
 /**
  * Thin wrapper over Predbat's built-in JSON API (see apps/predbat/web.py in
- * batpred). Every method is a plain GET against the configured base URL - no
- * mutation endpoints are wired up yet.
+ * batpred). Query methods are plain GETs against the configured base URL;
+ * the override methods below POST form-encoded bodies to Predbat's plan/rate
+ * override routes (these are not under `/api/`, matching web.py's routing).
  */
 export const predbatApi = {
   ping(baseUrl: string) {
@@ -57,5 +81,17 @@ export const predbatApi = {
 
   state<T = Record<string, unknown>>(baseUrl: string, entityId: string) {
     return getJson<T>(baseUrl, '/api/state', { entity_id: entityId })
+  },
+
+  /** Sets or clears a manual state override (Charge/Export/Freeze/Demand) on a slot. */
+  planOverride(baseUrl: string, payload: PlanOverridePayload) {
+    // Every field of PlanOverridePayload is a string (or a string-literal union, itself a
+    // string), so this is a safe reshape - TS just doesn't infer an index signature for it.
+    return postForm<OverrideResponse>(baseUrl, '/plan_override', { ...payload })
+  },
+
+  /** Sets or clears a manual value override (import/export rate, load, SOC) on a slot. */
+  rateOverride(baseUrl: string, payload: RateOverridePayload) {
+    return postForm<OverrideResponse>(baseUrl, '/rate_override', { ...payload })
   },
 }

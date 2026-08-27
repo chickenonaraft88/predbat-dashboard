@@ -21,5 +21,9 @@ export function TestProviders({ children, baseUrl = DEFAULT_BASE_URL }: { childr
 
 // oxlint-disable-next-line react/only-export-components -- test helper file, not part of any hot-reloaded UI
 export function renderWithProviders(ui: ReactElement, options?: { baseUrl?: string }) {
-  return render(<TestProviders baseUrl={options?.baseUrl}>{ui}</TestProviders>)
+  // Wraps via the `wrapper` option (not by hand-nesting <TestProviders> around
+  // `ui` here) so the returned `rerender` re-applies the wrapper on every call -
+  // a caller's `rerender(<Foo />)` would otherwise mount `<Foo />` at the root
+  // with no providers at all, rather than replacing just the previous `ui`.
+  return render(ui, { wrapper: ({ children }) => <TestProviders baseUrl={options?.baseUrl}>{children}</TestProviders> })
 }

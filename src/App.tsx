@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { RawPlan } from './api/types'
+import type { PlanOverrides, RawPlan } from './api/types'
 import { BaselineSummaryCard } from './components/BaselineSummaryCard'
 import { ConnectionBar } from './components/ConnectionBar'
 import { DebugColumnsToggle } from './components/DebugColumnsToggle'
@@ -21,7 +21,7 @@ const EMPTY_MESSAGE: Record<PlanView, string> = {
   baseline: 'Predbat has no baseline data for yesterday yet.',
 }
 
-function PlanTabContent({ plan, now }: { plan?: RawPlan; now: Date }) {
+function PlanTabContent({ plan, now, overrides }: { plan?: RawPlan; now: Date; overrides?: PlanOverrides }) {
   const { hoveredTime, setHoveredTime } = useSharedHover()
   const [debugColumns, setDebugColumns] = useDebugColumns()
 
@@ -34,7 +34,7 @@ function PlanTabContent({ plan, now }: { plan?: RawPlan; now: Date }) {
       <StalePlanBanner timestamp={plan.timestamp} now={now} />
       <PlanChart rows={plan.rows} now={now} hoveredTime={hoveredTime} onHoverChange={setHoveredTime} />
       <DebugColumnsToggle enabled={debugColumns} onChange={setDebugColumns} />
-      <PlanTable plan={plan} hoveredTime={hoveredTime} onHoverRow={setHoveredTime} debugColumns={debugColumns} />
+      <PlanTable plan={plan} overrides={overrides} hoveredTime={hoveredTime} onHoverRow={setHoveredTime} debugColumns={debugColumns} />
     </div>
   )
 }
@@ -81,7 +81,9 @@ function PlanSection() {
 
       {planData.isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading plan...</p>}
       {planData.isError && <p className="text-sm text-red-600 dark:text-red-400">{(planData.error as Error).message}</p>}
-      {planData.isSuccess && view === 'plan' && <PlanTabContent plan={planData.data.plan ?? undefined} now={now} />}
+      {planData.isSuccess && view === 'plan' && (
+        <PlanTabContent plan={planData.data.plan ?? undefined} now={now} overrides={planData.data.overrides} />
+      )}
       {planData.isSuccess && view === 'history' && <HistoryTabContent plan={planData.data.yesterday ?? undefined} />}
       {planData.isSuccess && view === 'baseline' && (
         <BaselineTabContent yesterday={planData.data.yesterday ?? undefined} baseline={planData.data.baseline ?? undefined} />

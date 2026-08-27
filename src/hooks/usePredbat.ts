@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { predbatApi } from '../api/client'
 import { useConnection } from '../api/connection'
-import type { PlanDataResponse } from '../api/types'
+import type { OverrideResponse, PlanDataResponse, PlanOverridePayload, RateOverridePayload } from '../api/types'
 
 const POLL_INTERVAL_MS = 5000
 
@@ -54,4 +54,30 @@ export function usePlanData() {
     },
     refetchInterval: POLL_INTERVAL_MS,
   })
+}
+
+/**
+ * Shared plumbing for the override mutations below: POST a payload via the
+ * given client method, then invalidate `plan_data` so the next poll (or an
+ * immediate refetch, since the query is active) picks up the new
+ * `overrides`/`overrides_hash`.
+ */
+function useOverrideMutation<TPayload>(post: (baseUrl: string, payload: TPayload) => Promise<OverrideResponse>) {
+  const { baseUrl } = useConnection()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: TPayload) => post(baseUrl, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plan_data', baseUrl] }),
+  })
+}
+
+/** Sets or clears a manual state override (Charge/Export/Freeze/Demand) on a slot - issue #15. */
+export function usePlanOverride() {
+  return useOverrideMutation<PlanOverridePayload>(predbatApi.planOverride)
+}
+
+/** Sets or clears a manual value override (import/export rate, load, SOC) on a slot - issue #16. */
+export function useRateOverride() {
+  return useOverrideMutation<RateOverridePayload>(predbatApi.rateOverride)
 }

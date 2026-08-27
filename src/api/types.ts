@@ -111,15 +111,44 @@ export interface ManualRateEntry {
 }
 
 export interface PlanOverrides {
-  manual_charge_times: unknown
-  manual_export_times: unknown
-  manual_freeze_charge_times: unknown
-  manual_freeze_export_times: unknown
-  manual_demand_times: unknown
+  /** Minutes-from-midnight (matches `PlanRow.slot_minute`) of slots under each manual state override. */
+  manual_charge_times: number[]
+  manual_export_times: number[]
+  manual_freeze_charge_times: number[]
+  manual_freeze_export_times: number[]
+  manual_demand_times: number[]
   manual_import_rates: ManualRateEntry[]
   manual_export_rates: ManualRateEntry[]
   manual_load_adjust: Array<{ minutes: number; adjustment: number }>
   manual_soc: Array<{ minutes: number; target: number }>
+}
+
+/** The action a `POST /plan_override` request applies to a slot (issue #15). */
+export type PlanOverrideAction = 'Manual Demand' | 'Manual Charge' | 'Manual Export' | 'Manual Freeze Charge' | 'Manual Freeze Export' | 'Clear'
+
+/** Body of a `POST /plan_override` request - form-encoded, not JSON. */
+export interface PlanOverridePayload {
+  /** `"<Mon|Tue|...> HH:MM"` in Predbat's configured timezone - see `formatOverrideTime`. */
+  time: string
+  action: PlanOverrideAction
+}
+
+/** The action a `POST /rate_override` request applies to a slot (issue #16). */
+export type RateOverrideAction = 'Set Import' | 'Clear Import' | 'Set Export' | 'Clear Export' | 'Set Load' | 'Clear Load' | 'Set SOC' | 'Clear SOC'
+
+/** Body of a `POST /rate_override` request - form-encoded, not JSON. */
+export interface RateOverridePayload {
+  /** `"<Mon|Tue|...> HH:MM"` in Predbat's configured timezone - see `formatOverrideTime`. */
+  time: string
+  action: RateOverrideAction
+  /** Import/export rate in p/kWh, load in kWh, or SOC in % - as a string. Required even for `Clear *` actions, which ignore it server-side. */
+  rate: string
+}
+
+/** Response from `POST /plan_override` and `POST /rate_override`. */
+export interface OverrideResponse {
+  success: boolean
+  message?: string
 }
 
 /** Response from GET /api/plan_data. */
