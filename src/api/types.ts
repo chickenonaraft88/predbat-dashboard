@@ -3,6 +3,18 @@
 // (see output.py's `publish_html_plan` for the plan row fields) - if a future
 // Predbat release adds or renames fields, update this file to match.
 
+/**
+ * A single "why" reason attached to a plan row. The API sends the raw
+ * `{code, params}` pair rather than a resolved sentence - `code` looks up a
+ * `{placeholder}` template in `RawPlan.reason_templates`
+ * (`output.py`'s `REASON_TEMPLATES`, ~lines 32-53) and `params` fills it in.
+ * See `src/lib/reasons.ts` for the client-side template expansion.
+ */
+export interface PlanReason {
+  code: string
+  params: Record<string, string | number>
+}
+
 export interface PlanRow {
   time: string
   slot_minute: number
@@ -14,11 +26,14 @@ export interface PlanRow {
   state_target: string | null
   state_override: string | null
   state_html: string
-  reasons: string
+  reasons: PlanReason[]
   state_text: string
   state_color: string
   state2_text: string | null
   state2_color: string | null
+  /** Threshold-banded background colour for the import/export rate cells (output.py ~1278-1333). */
+  rate_color_import: string
+  rate_color_export: string
   soc_percent: number
   soc_change: number
   soc_sym: string
@@ -29,6 +44,31 @@ export interface PlanRow {
   load_forecast: number
   load_forecast_total: number
   clipped: number
+  car_charging?: number
+  iboost?: number
+  carbon_intensity?: number
+  total_carbon?: number
+  /** Solcast's 10%-probability PV forecast bracket for the slot (output.py's `pv_forecast10`). */
+  pv_forecast10?: number
+  /** Load-variance-model forecast bracket for the slot (output.py's `load_forecast10`). */
+  load_forecast10?: number
+  /** Load added externally via `load_forecast` settings (PredAI/PredHeat/etc), output.py's `extra_load`. */
+  extra_load?: number
+  extra_load_total?: number
+}
+
+/**
+ * End-of-plan running totals (`output.py`'s `raw_plan["totals"]`, ~lines
+ * 1776-1792). `extra_load`/`car_charging`/`iboost`/`carbon_intensity`/`total_carbon`
+ * are only present when the corresponding plan feature is enabled/configured.
+ */
+export interface PlanTotals {
+  total_cost: number
+  pv_forecast: number
+  load_forecast: number
+  clipped: number
+  soc_percent: number
+  extra_load?: number
   car_charging?: number
   iboost?: number
   carbon_intensity?: number
@@ -50,6 +90,10 @@ export interface RawPlan {
   carbon_enable: boolean
   currency_symbols: string[] | string
   timestamp: string
+  /** Absent on older Predbat releases - callers should fall back to summing `rows`. */
+  totals?: PlanTotals
+  /** `{code: template}` map for expanding each row's `reasons` (output.py's REASON_TEMPLATES). */
+  reason_templates?: Record<string, string>
 }
 
 export interface YesterdayJson {
