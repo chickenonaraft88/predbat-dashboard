@@ -36,6 +36,9 @@ npm install
 npm run dev       # dev server on http://localhost:5173
 npm run build     # typecheck + production build to dist/
 npm run lint      # oxlint
+npm run test      # vitest
+npm run test:watch     # vitest in watch mode
+npm run test:coverage  # vitest with a coverage report
 ```
 
 ## Project layout
@@ -45,7 +48,16 @@ src/
   api/         # fetch client for Predbat's JSON API, types, connection state
   hooks/       # TanStack Query hooks wrapping the API client
   components/  # dashboard UI (connection bar, status cards, plan table/chart)
+  test/        # test setup, MSW handlers, and shared render helpers
 ```
+
+## Testing
+
+Tests use [Vitest](https://vitest.dev/) with [React Testing Library](https://testing-library.com/react) and [MSW](https://mswjs.io/) to mock Predbat's `/api/*` responses at the network level, so the real fetch client (`src/api/client.ts`) is exercised end to end rather than mocked itself. Tests live alongside the code they cover (`*.test.ts`/`*.test.tsx`).
+
+When a test needs to observe a hook's state after an async update (e.g. after calling `refetch()`), render the hook through a small consumer component and assert on the DOM rather than using `renderHook()`'s `result.current` directly - see the comment in `src/hooks/usePredbat.test.tsx`. In this project's stack (React 19 + Testing Library + TanStack Query v5), `renderHook()` does not reliably propagate a query's post-refetch state back through `result.current`, even though the same update reaches any component actually rendering the hook.
+
+CI (`.github/workflows/ci.yml`) runs lint, the production build (which typechecks), and the test suite on every push and pull request.
 
 ## Status
 
