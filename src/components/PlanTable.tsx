@@ -58,12 +58,33 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
           {rows.map((row) => (
             <tr key={row.time} className="bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40">
               <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{formatTime(row.time)}</td>
-              <td
-                className="px-3 py-1.5 font-medium"
-                data-testid="state-cell"
-                style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
-              >
-                {row.state_text}
+              <td className="p-0 font-medium" data-testid="state-cell">
+                {row.state2_text ? (
+                  <div className="flex h-full w-full" data-testid="state-split">
+                    <span
+                      className="flex-1 px-3 py-1.5"
+                      data-testid="state-half-1"
+                      style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
+                    >
+                      {row.state_text}
+                    </span>
+                    <span
+                      className="flex-1 px-3 py-1.5"
+                      data-testid="state-half-2"
+                      style={{ backgroundColor: row.state2_color || undefined, color: textColorForBg(row.state2_color) }}
+                    >
+                      {row.state2_text}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    className="px-3 py-1.5"
+                    data-testid="state-single"
+                    style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
+                  >
+                    {row.state_text}
+                  </div>
+                )}
               </td>
               <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_import || undefined, color: textColorForBg(row.rate_color_import) }}>
                 {row.import_rate.toFixed(2)}

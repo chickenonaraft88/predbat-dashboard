@@ -89,7 +89,7 @@ describe('PlanTable', () => {
 
     render(<PlanTable plan={makePlan({ rows })} />)
 
-    const cell = screen.getByTestId('state-cell')
+    const cell = screen.getByTestId('state-single')
     expect(cell).toHaveStyle({ backgroundColor: expectedColor })
   })
 
@@ -109,6 +109,36 @@ describe('PlanTable', () => {
     const exportCell = screen.getByText('2.00')
     expect(importCell).toHaveStyle({ backgroundColor: '#F18261' })
     expect(exportCell).toHaveStyle({ backgroundColor: '#dcdcdc' })
+  })
+
+  it('renders a single-tone state cell when state2_text is not set', () => {
+    const rows = [makePlanRow({ state_text: 'Chrg', state_color: '#3AEE85', state2_text: null, state2_color: null })]
+
+    render(<PlanTable plan={makePlan({ rows })} />)
+
+    expect(screen.queryByTestId('state-split')).not.toBeInTheDocument()
+    expect(screen.getByTestId('state-cell')).toHaveTextContent('Chrg')
+  })
+
+  it('renders a split two-tone state cell when state2_text/state2_color are set', () => {
+    const rows = [
+      makePlanRow({
+        state_text: 'Chrg',
+        state_color: '#3AEE85',
+        state2_text: 'FrzExp',
+        state2_color: '#AAAAAA',
+      }),
+    ]
+
+    render(<PlanTable plan={makePlan({ rows })} />)
+
+    expect(screen.getByTestId('state-split')).toBeInTheDocument()
+    const half1 = screen.getByTestId('state-half-1')
+    const half2 = screen.getByTestId('state-half-2')
+    expect(half1).toHaveTextContent('Chrg')
+    expect(half1).toHaveStyle({ backgroundColor: '#3AEE85' })
+    expect(half2).toHaveTextContent('FrzExp')
+    expect(half2).toHaveStyle({ backgroundColor: '#AAAAAA' })
   })
 
   it('only shows Car/iBoost/Carbon columns when the corresponding plan metadata is set', () => {
