@@ -72,4 +72,6 @@ export const handlers = [
   http.get(`${DEFAULT_BASE_URL}/api/ping`, () => HttpResponse.json({ result: 'ok' })),
   http.get(`${DEFAULT_BASE_URL}/api/status`, () => HttpResponse.json({ calculating: false, battery_html: '' })),
   http.get(`${DEFAULT_BASE_URL}/api/plan_data`, () => HttpResponse.json(samplePlanData)),
+  http.post(`${DEFAULT_BASE_URL}/plan_override`, () => HttpResponse.json({ success: true })),
+  http.post(`${DEFAULT_BASE_URL}/rate_override`, () => HttpResponse.json({ success: true })),
 ]

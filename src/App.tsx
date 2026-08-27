@@ -22,7 +22,7 @@ function PlanSection() {
   return (
     <div className="flex flex-col gap-4">
       <PlanChart rows={rows} />
-      <PlanTable rows={rows} />
+      <PlanTable rows={rows} overrides={planData.data?.overrides} />
     </div>
   )
 }
