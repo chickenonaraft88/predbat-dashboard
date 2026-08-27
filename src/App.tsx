@@ -14,6 +14,7 @@ import { useDebugColumns } from './hooks/useDebugColumns'
 import { useNow } from './hooks/useNow'
 import { usePlanData } from './hooks/usePredbat'
 import { useSharedHover } from './hooks/useSharedHover'
+import { useSystemTheme } from './hooks/useSystemTheme'
 
 const EMPTY_MESSAGE: Record<PlanView, string> = {
   plan: 'Predbat has not published a plan yet.',
@@ -93,6 +94,8 @@ function PlanSection() {
 }
 
 export function App() {
+  useSystemTheme()
+
   return (
     <div className="flex min-h-screen flex-col">
       <ConnectionBar />

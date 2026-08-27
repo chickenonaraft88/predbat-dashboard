@@ -29,3 +29,32 @@ export function textColorForBg(hex: string | null | undefined): string {
   if (!hex) return 'inherit'
   return isLightColor(hex) ? '#111827' : '#f8fafc'
 }
+
+/** True if every channel of `hex` is at or above `threshold` - catches Predbat's white/near-white "nothing special happening" tones without also catching meaningfully-tinted light colours like the yellow rate band. */
+function isNearWhite(hex: string, threshold = 0xee): boolean {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!match) return false
+  const value = parseInt(match[1], 16)
+  const r = (value >> 16) & 0xff
+  const g = (value >> 8) & 0xff
+  const b = value & 0xff
+  return r >= threshold && g >= threshold && b >= threshold
+}
+
+/**
+ * Resolves the colour to actually paint a cell's background with, given the
+ * page's current theme. Predbat's white (`#FFFFFF`, idle/demand) and
+ * near-white (`#EEEEEE`, FrzChrg) tones stand for "nothing special
+ * happening" rather than a real signal, so painted verbatim in dark mode
+ * they read as a jarring bright box rather than blending with the rest of
+ * the (dark) table. In dark mode those near-white tones are swapped for a
+ * neutral dark-surface tone instead; every other colour (the actual signal
+ * the palette conveys - Chrg green, Exp yellow, a hot rate band, ...) is
+ * left verbatim in both themes, since it already reads fine against a dark
+ * background.
+ */
+export function cellBackground(hex: string | null | undefined, isDark: boolean): string | undefined {
+  if (!hex) return undefined
+  if (isDark && isNearWhite(hex)) return '#1e293b' // slate-800, matching the table's own dark surface colour
+  return hex
+}

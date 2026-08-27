@@ -2,16 +2,23 @@ import { useEffect, useRef } from 'react'
 
 import type { CSSProperties } from 'react'
 
-import type { PlanOverrideAction, PlanOverrides, PlanRow, RateOverrideAction, RawPlan } from '../api/types'
+import type { PlanOverrides, PlanRow, RateOverrideAction, RawPlan } from '../api/types'
+import { useIsDarkMode } from '../hooks/useIsDarkMode'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { useNow } from '../hooks/useNow'
 import { usePlanOverride, useRateOverride } from '../hooks/usePredbat'
-import { textColorForBg } from '../lib/planColors'
+import { cellBackground, textColorForBg } from '../lib/planColors'
+import { activePlanOverride, findOverrideValue, PLAN_OVERRIDE_ITEMS } from '../lib/planOverrides'
 import { findCurrentRowIndex } from '../lib/planTime'
 import { resolveReasons } from '../lib/reasons'
 import { formatOverrideTime } from '../lib/time'
 import { OverrideMenu } from './OverrideMenu'
+import { PlanTableMobile } from './PlanTableMobile'
 import { RateOverrideMenu } from './RateOverrideMenu'
 import { ReasonTooltip } from './ReasonTooltip'
+
+/** Below this viewport width, `PlanTable` renders `PlanTableMobile`'s card list instead of the desktop table - matches the `md` breakpoint used elsewhere for layout switches. */
+const MOBILE_QUERY = '(max-width: 767px)'
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -22,26 +29,6 @@ function sumRows(rows: PlanRow[], key: keyof PlanRow): number {
     const value = row[key]
     return total + (typeof value === 'number' ? value : 0)
   }, 0)
-}
-
-const PLAN_OVERRIDE_ITEMS: Array<{ label: string; action: PlanOverrideAction }> = [
-  { label: 'Manual Demand', action: 'Manual Demand' },
-  { label: 'Manual Charge', action: 'Manual Charge' },
-  { label: 'Manual Export', action: 'Manual Export' },
-  { label: 'Manual Freeze Charge', action: 'Manual Freeze Charge' },
-  { label: 'Manual Freeze Export', action: 'Manual Freeze Export' },
-  { label: 'Clear', action: 'Clear' },
-]
-
-/** The manual state override label active on a slot, if any - from `PlanOverrides`' `manual_*_times` arrays of `slot_minute`. */
-function activePlanOverride(slotMinute: number, overrides: PlanOverrides | undefined): string | null {
-  if (!overrides) return null
-  if (overrides.manual_charge_times.includes(slotMinute)) return 'Manual Charge'
-  if (overrides.manual_export_times.includes(slotMinute)) return 'Manual Export'
-  if (overrides.manual_freeze_charge_times.includes(slotMinute)) return 'Manual Freeze Charge'
-  if (overrides.manual_freeze_export_times.includes(slotMinute)) return 'Manual Freeze Export'
-  if (overrides.manual_demand_times.includes(slotMinute)) return 'Manual Demand'
-  return null
 }
 
 function TimeCell({ row, overrides }: { row: PlanRow; overrides: PlanOverrides | undefined }) {
@@ -69,12 +56,6 @@ function TimeCell({ row, overrides }: { row: PlanRow; overrides: PlanOverrides |
       />
     </td>
   )
-}
-
-/** Looks up the override value for a slot from one of `PlanOverrides`' `manual_*` value arrays, if any. */
-function findOverrideValue<T extends { minutes: number }>(entries: T[] | undefined, slotMinute: number, pick: (entry: T) => number): number | null {
-  const entry = entries?.find((e) => e.minutes === slotMinute)
-  return entry === undefined ? null : pick(entry)
 }
 
 function ValueOverrideCell({
@@ -121,13 +102,8 @@ function ValueOverrideCell({
   )
 }
 
-export function PlanTable({
-  plan,
-  overrides,
-  hoveredTime,
-  onHoverRow,
-  debugColumns = false,
-}: {
+/** Props shared by `PlanTable` and its two layout implementations (`DesktopPlanTable`/`PlanTableMobile`). */
+export interface PlanTableProps {
   plan: RawPlan
   overrides?: PlanOverrides
   /** The row time (matches PlanRow.time) the chart currently has hovered, or null/undefined for none. */
@@ -136,11 +112,19 @@ export function PlanTable({
   onHoverRow?: (time: string | null) => void
   /** Shows effective (loss-adjusted) rate, PV10/Load10 forecast brackets, clipped kWh and XLoad kWh columns. */
   debugColumns?: boolean
-}) {
+}
+
+/**
+ * The plan table, as a data grid - used at `md` and wider. Below that,
+ * `PlanTable` renders `PlanTableMobile`'s card list instead: a multi-column
+ * table doesn't survive a phone screen, however much it scrolls.
+ */
+function DesktopPlanTable({ plan, overrides, hoveredTime, onHoverRow, debugColumns = false }: PlanTableProps) {
   const { rows } = plan
   const showCar = plan.num_cars > 0
   const showIboost = plan.iboost_enable
   const showCarbon = plan.carbon_enable
+  const isDark = useIsDarkMode()
 
   const now = useNow()
   const currentRowIndex = findCurrentRowIndex(rows, now)
@@ -220,14 +204,14 @@ export function PlanTable({
                         <span
                           className="flex-1 px-3 py-1.5"
                           data-testid="state-half-1"
-                          style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
+                          style={{ backgroundColor: cellBackground(row.state_color, isDark), color: textColorForBg(cellBackground(row.state_color, isDark)) }}
                         >
                           {row.state_text}
                         </span>
                         <span
                           className="flex-1 px-3 py-1.5"
                           data-testid="state-half-2"
-                          style={{ backgroundColor: row.state2_color || undefined, color: textColorForBg(row.state2_color) }}
+                          style={{ backgroundColor: cellBackground(row.state2_color, isDark), color: textColorForBg(cellBackground(row.state2_color, isDark)) }}
                         >
                           {row.state2_text}
                         </span>
@@ -236,7 +220,7 @@ export function PlanTable({
                       <div
                         className="px-3 py-1.5"
                         data-testid="state-single"
-                        style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
+                        style={{ backgroundColor: cellBackground(row.state_color, isDark), color: textColorForBg(cellBackground(row.state_color, isDark)) }}
                       >
                         {row.state_text}
                       </div>
@@ -253,7 +237,7 @@ export function PlanTable({
                   clearLabel="Clear Import Rate"
                   menuLabel={`Override import rate at ${formatOverrideTime(row.time)}`}
                   formatValue={(v) => v.toFixed(2)}
-                  style={{ backgroundColor: row.rate_color_import || undefined, color: textColorForBg(row.rate_color_import) }}
+                  style={{ backgroundColor: cellBackground(row.rate_color_import, isDark), color: textColorForBg(cellBackground(row.rate_color_import, isDark)) }}
                 />
                 {debugColumns && <td className="px-3 py-1.5 text-right">{row.import_rate_adjusted.toFixed(2)}</td>}
                 <ValueOverrideCell
@@ -266,7 +250,7 @@ export function PlanTable({
                   clearLabel="Clear Export Rate"
                   menuLabel={`Override export rate at ${formatOverrideTime(row.time)}`}
                   formatValue={(v) => v.toFixed(2)}
-                  style={{ backgroundColor: row.rate_color_export || undefined, color: textColorForBg(row.rate_color_export) }}
+                  style={{ backgroundColor: cellBackground(row.rate_color_export, isDark), color: textColorForBg(cellBackground(row.rate_color_export, isDark)) }}
                 />
                 {debugColumns && <td className="px-3 py-1.5 text-right">{row.export_rate_adjusted.toFixed(2)}</td>}
                 <td className="px-3 py-1.5 text-right">{row.pv_forecast.toFixed(2)}</td>
@@ -330,4 +314,17 @@ export function PlanTable({
       </table>
     </div>
   )
+}
+
+/**
+ * Picks between the desktop table and the mobile card list based on viewport
+ * width. This has to be a separate component from both, rather than an
+ * `if (isMobile) return ...` early return inside one of them - the two
+ * layouts call a different number of hooks internally, and switching which
+ * one is mounted is fine, but switching how many hooks *one* component calls
+ * between renders is not.
+ */
+export function PlanTable(props: PlanTableProps) {
+  const isMobile = useMediaQuery(MOBILE_QUERY)
+  return isMobile ? <PlanTableMobile {...props} /> : <DesktopPlanTable {...props} />
 }

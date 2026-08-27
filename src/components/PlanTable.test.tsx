@@ -431,4 +431,40 @@ describe('PlanTable', () => {
       expect(screen.getByRole('button', { name: /Override load/ })).toHaveTextContent('1.50')
     })
   })
+
+  describe('mobile layout switch', () => {
+    function fakeMediaQueryList(matches: boolean) {
+      return {
+        matches,
+        media: '',
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      } as unknown as MediaQueryList
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('renders the desktop table when the mobile query does not match', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue(fakeMediaQueryList(false))
+      const rows = [makePlanRow()]
+
+      render(<PlanTable plan={makePlan({ rows })} />)
+
+      expect(screen.getByRole('table')).toBeInTheDocument()
+      expect(screen.queryByTestId('mobile-plan-list')).not.toBeInTheDocument()
+    })
+
+    it('renders the mobile card list when the mobile query matches', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue(fakeMediaQueryList(true))
+      const rows = [makePlanRow({ state_text: 'Charging' })]
+
+      render(<PlanTable plan={makePlan({ rows })} />)
+
+      expect(screen.getByTestId('mobile-plan-list')).toBeInTheDocument()
+      expect(screen.queryByRole('table')).not.toBeInTheDocument()
+      expect(screen.getByText('Charging')).toBeInTheDocument()
+    })
+  })
 })
