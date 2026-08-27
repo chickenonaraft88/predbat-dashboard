@@ -35,8 +35,23 @@ export interface PlanRow {
   total_carbon?: number
 }
 
+/** Aggregate totals published alongside a plan's rows (see `totals` in RawPlan). */
+export interface PlanTotals {
+  total_cost: number
+  pv_forecast: number
+  load_forecast: number
+  clipped: number
+  soc_percent: number
+  extra_load?: number
+  car_charging?: number
+  iboost?: number
+  carbon_intensity?: number
+  total_carbon?: number
+}
+
 export interface RawPlan {
   rows: PlanRow[]
+  totals?: PlanTotals
   soc: number
   soc_max: number
   reserve: number
@@ -52,15 +67,14 @@ export interface RawPlan {
   timestamp: string
 }
 
-export interface YesterdayJson {
-  timestamp?: string
-  [key: string]: unknown
-}
+// `yesterday` and `baseline` are produced by the same publish_html_plan() call
+// as the live plan (see apps/predbat/output.py in batpred) and are
+// structurally identical to RawPlan - `yesterday` is what actually happened,
+// `baseline` is a simulated "charge to full in the cheapest slot" strategy
+// standing in for "no Predbat optimizer".
+export type YesterdayJson = RawPlan
 
-export interface BaselineJson {
-  timestamp?: string
-  [key: string]: unknown
-}
+export type BaselineJson = RawPlan
 
 export interface ManualRateEntry {
   minutes: number
