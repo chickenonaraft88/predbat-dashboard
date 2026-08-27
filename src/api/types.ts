@@ -19,6 +19,9 @@ export interface PlanRow {
   state_color: string
   state2_text: string | null
   state2_color: string | null
+  /** Threshold-banded background colour for the import/export rate cells (output.py ~1278-1333). */
+  rate_color_import: string
+  rate_color_export: string
   soc_percent: number
   soc_change: number
   soc_sym: string

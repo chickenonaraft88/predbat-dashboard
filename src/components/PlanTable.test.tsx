@@ -76,6 +76,41 @@ describe('PlanTable', () => {
     expect(totalsRow!.textContent).toContain('3.00') // pv_forecast summed
   })
 
+  it.each([
+    ['Chrg', '#3AEE85'],
+    ['HoldChrg', '#34DBEB'],
+    ['FrzChrg', '#EEEEEE'],
+    ['Exp', '#FFFF00'],
+    ['HoldExp', '#FFFF00'],
+    ['FrzExp', '#AAAAAA'],
+    ['Idle', '#FFFFFF'],
+  ])('colours the state cell background for %s state', (stateText, expectedColor) => {
+    const rows = [makePlanRow({ state_text: stateText, state_color: expectedColor })]
+
+    render(<PlanTable plan={makePlan({ rows })} />)
+
+    const cell = screen.getByTestId('state-cell')
+    expect(cell).toHaveStyle({ backgroundColor: expectedColor })
+  })
+
+  it('colours import/export rate cells using the API-provided rate_color fields', () => {
+    const rows = [
+      makePlanRow({
+        import_rate: 45,
+        rate_color_import: '#F18261',
+        export_rate: 2,
+        rate_color_export: '#dcdcdc',
+      }),
+    ]
+
+    render(<PlanTable plan={makePlan({ rows })} />)
+
+    const importCell = screen.getByText('45.00')
+    const exportCell = screen.getByText('2.00')
+    expect(importCell).toHaveStyle({ backgroundColor: '#F18261' })
+    expect(exportCell).toHaveStyle({ backgroundColor: '#dcdcdc' })
+  })
+
   it('only shows Car/iBoost/Carbon columns when the corresponding plan metadata is set', () => {
     const rows = [makePlanRow({ car_charging: 1.2, iboost: 0.3, carbon_intensity: 120, total_carbon: 0.5 })]
 

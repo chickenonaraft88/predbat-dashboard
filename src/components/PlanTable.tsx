@@ -1,4 +1,5 @@
 import type { PlanRow, RawPlan } from '../api/types'
+import { textColorForBg } from '../lib/planColors'
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -57,12 +58,20 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
           {rows.map((row) => (
             <tr key={row.time} className="bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40">
               <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{formatTime(row.time)}</td>
-              <td className="px-3 py-1.5" style={{ color: row.state_color || undefined }}>
+              <td
+                className="px-3 py-1.5 font-medium"
+                data-testid="state-cell"
+                style={{ backgroundColor: row.state_color || undefined, color: textColorForBg(row.state_color) }}
+              >
                 {row.state_text}
               </td>
-              <td className="px-3 py-1.5 text-right">{row.import_rate.toFixed(2)}</td>
+              <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_import || undefined, color: textColorForBg(row.rate_color_import) }}>
+                {row.import_rate.toFixed(2)}
+              </td>
               <td className="px-3 py-1.5 text-right">{row.import_rate_adjusted.toFixed(2)}</td>
-              <td className="px-3 py-1.5 text-right">{row.export_rate.toFixed(2)}</td>
+              <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_export || undefined, color: textColorForBg(row.rate_color_export) }}>
+                {row.export_rate.toFixed(2)}
+              </td>
               <td className="px-3 py-1.5 text-right">{row.export_rate_adjusted.toFixed(2)}</td>
               <td className="px-3 py-1.5 text-right">{row.pv_forecast.toFixed(2)}</td>
               <td className="px-3 py-1.5 text-right">{row.load_forecast.toFixed(2)}</td>
