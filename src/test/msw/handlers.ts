@@ -15,7 +15,7 @@ export function makePlanRow(overrides: Partial<PlanRow> = {}): PlanRow {
     state_target: null,
     state_override: null,
     state_html: 'Idle',
-    reasons: '',
+    reasons: [],
     state_text: 'Idle',
     state_color: '#FFFFFF',
     state2_text: null,
@@ -59,6 +59,9 @@ export const samplePlanData = {
       load_forecast: 0.2,
       clipped: 0,
       soc_percent: 62,
+    },
+    reason_templates: {
+      demand_steady: 'Demand — battery level is expected to stay steady; no charging or exporting is scheduled this slot.',
     },
   },
   yesterday: null,

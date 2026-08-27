@@ -3,6 +3,18 @@
 // (see output.py's `publish_html_plan` for the plan row fields) - if a future
 // Predbat release adds or renames fields, update this file to match.
 
+/**
+ * A single "why" reason attached to a plan row. The API sends the raw
+ * `{code, params}` pair rather than a resolved sentence - `code` looks up a
+ * `{placeholder}` template in `RawPlan.reason_templates`
+ * (`output.py`'s `REASON_TEMPLATES`, ~lines 32-53) and `params` fills it in.
+ * See `src/lib/reasons.ts` for the client-side template expansion.
+ */
+export interface PlanReason {
+  code: string
+  params: Record<string, string | number>
+}
+
 export interface PlanRow {
   time: string
   slot_minute: number
@@ -14,7 +26,7 @@ export interface PlanRow {
   state_target: string | null
   state_override: string | null
   state_html: string
-  reasons: string
+  reasons: PlanReason[]
   state_text: string
   state_color: string
   state2_text: string | null
@@ -73,6 +85,8 @@ export interface RawPlan {
   timestamp: string
   /** Absent on older Predbat releases - callers should fall back to summing `rows`. */
   totals?: PlanTotals
+  /** `{code: template}` map for expanding each row's `reasons` (output.py's REASON_TEMPLATES). */
+  reason_templates?: Record<string, string>
 }
 
 export interface YesterdayJson {

@@ -1,5 +1,7 @@
 import type { PlanRow, RawPlan } from '../api/types'
 import { textColorForBg } from '../lib/planColors'
+import { resolveReasons } from '../lib/reasons'
+import { ReasonTooltip } from './ReasonTooltip'
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -55,10 +57,13 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {rows.map((row) => (
+          {rows.map((row) => {
+            const reasonTexts = resolveReasons(row.reasons, plan.reason_templates)
+            return (
             <tr key={row.time} className="bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40">
               <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{formatTime(row.time)}</td>
               <td className="p-0 font-medium" data-testid="state-cell">
+                <ReasonTooltip reasons={reasonTexts}>
                 {row.state2_text ? (
                   <div className="flex h-full w-full" data-testid="state-split">
                     <span
@@ -85,6 +90,7 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
                     {row.state_text}
                   </div>
                 )}
+                </ReasonTooltip>
               </td>
               <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_import || undefined, color: textColorForBg(row.rate_color_import) }}>
                 {row.import_rate.toFixed(2)}
@@ -105,7 +111,8 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
               <td className="px-3 py-1.5 text-right">{row.cost_change.toFixed(2)}</td>
               <td className="px-3 py-1.5 text-right">{row.total_cost.toFixed(2)}</td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold dark:border-slate-700 dark:bg-slate-900">

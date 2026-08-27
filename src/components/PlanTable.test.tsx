@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { PlanTable } from './PlanTable'
@@ -139,6 +140,35 @@ describe('PlanTable', () => {
     expect(half1).toHaveStyle({ backgroundColor: '#3AEE85' })
     expect(half2).toHaveTextContent('FrzExp')
     expect(half2).toHaveStyle({ backgroundColor: '#AAAAAA' })
+  })
+
+  it('expands a row reason against reason_templates and shows it in a tooltip on hover', async () => {
+    const user = userEvent.setup()
+    const rows = [
+      makePlanRow({
+        state_text: 'Chrg',
+        reasons: [{ code: 'charge_low_rate', params: { target_percent: 80, rate_kw: '3.50', rate: '12.34' } }],
+      }),
+    ]
+    const plan = makePlan({
+      rows,
+      reason_templates: {
+        charge_low_rate: 'Charging up to {target_percent}% at {rate_kw}kW at the import rate for this slot of ({rate}p/kWh).',
+      },
+    })
+
+    render(<PlanTable plan={plan} />)
+
+    await user.hover(screen.getByRole('button'))
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Charging up to 80% at 3.50kW at the import rate for this slot of (12.34p/kWh).')
+  })
+
+  it('does not render a reason trigger when a row has no reasons', () => {
+    const rows = [makePlanRow({ reasons: [] })]
+
+    render(<PlanTable plan={makePlan({ rows })} />)
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('only shows Car/iBoost/Carbon columns when the corresponding plan metadata is set', () => {
