@@ -96,15 +96,14 @@ export interface RawPlan {
   reason_templates?: Record<string, string>
 }
 
-export interface YesterdayJson {
-  timestamp?: string
-  [key: string]: unknown
-}
+// `yesterday` and `baseline` are produced by the same publish_html_plan() call
+// as the live plan (see apps/predbat/output.py in batpred) and are
+// structurally identical to RawPlan - `yesterday` is what actually happened,
+// `baseline` is a simulated "charge to full in the cheapest slot" strategy
+// standing in for "no Predbat optimizer".
+export type YesterdayJson = RawPlan
 
-export interface BaselineJson {
-  timestamp?: string
-  [key: string]: unknown
-}
+export type BaselineJson = RawPlan
 
 export interface ManualRateEntry {
   minutes: number
