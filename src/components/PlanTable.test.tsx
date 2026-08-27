@@ -30,26 +30,15 @@ describe('PlanTable', () => {
     expect(screen.queryAllByRole('row')).toHaveLength(2) // header + totals row only
   })
 
-  it('renders the adjusted rate, PV/load forecast and clipped columns', () => {
-    const rows = [
-      makePlanRow({
-        import_rate_adjusted: 26.1,
-        export_rate_adjusted: 14.2,
-        pv_forecast: 1.5,
-        load_forecast: 0.42,
-        clipped: 0.05,
-      }),
-    ]
+  it('renders the PV/load forecast columns', () => {
+    const rows = [makePlanRow({ pv_forecast: 1.5, load_forecast: 0.42 })]
 
     render(<PlanTable plan={makePlan({ rows })} />)
 
-    expect(screen.getByText('Import adj')).toBeInTheDocument()
-    expect(screen.getByText('Export adj')).toBeInTheDocument()
-    expect(screen.getByText('26.10')).toBeInTheDocument()
-    expect(screen.getByText('14.20')).toBeInTheDocument()
+    expect(screen.getByText('PV kWh')).toBeInTheDocument()
+    expect(screen.getByText('Load kWh')).toBeInTheDocument()
     expect(screen.getByText('1.50')).toBeInTheDocument()
     expect(screen.getByText('0.42')).toBeInTheDocument()
-    expect(screen.getByText('0.05')).toBeInTheDocument()
   })
 
   it('uses the API-provided totals row when present', () => {
@@ -235,6 +224,47 @@ describe('PlanTable', () => {
       render(<PlanTable plan={makePlan({ rows })} hoveredTime={null} />)
 
       expect(screen.queryByTestId('hovered-row')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('debug columns', () => {
+    it('hides the effective rate, PV10/Load10, clipped and XLoad columns by default', () => {
+      const rows = [makePlanRow()]
+      render(<PlanTable plan={makePlan({ rows })} />)
+
+      expect(screen.queryByText('Import eff')).not.toBeInTheDocument()
+      expect(screen.queryByText('Export eff')).not.toBeInTheDocument()
+      expect(screen.queryByText('PV10 kWh')).not.toBeInTheDocument()
+      expect(screen.queryByText('Load10 kWh')).not.toBeInTheDocument()
+      expect(screen.queryByText('Clip kWh')).not.toBeInTheDocument()
+      expect(screen.queryByText('XLoad kWh')).not.toBeInTheDocument()
+    })
+
+    it('shows the debug columns with their values when debugColumns is true', () => {
+      const rows = [
+        makePlanRow({
+          import_rate_adjusted: 27.1,
+          export_rate_adjusted: 13.4,
+          pv_forecast10: 0.3,
+          load_forecast10: 0.15,
+          clipped: 0.02,
+          extra_load: 0.4,
+        }),
+      ]
+
+      render(<PlanTable plan={makePlan({ rows })} debugColumns />)
+
+      expect(screen.getByText('Import eff')).toBeInTheDocument()
+      expect(screen.getByText('27.10')).toBeInTheDocument()
+      expect(screen.getByText('Export eff')).toBeInTheDocument()
+      expect(screen.getByText('13.40')).toBeInTheDocument()
+      expect(screen.getByText('PV10 kWh')).toBeInTheDocument()
+      expect(screen.getByText('0.30')).toBeInTheDocument()
+      expect(screen.getByText('Load10 kWh')).toBeInTheDocument()
+      expect(screen.getByText('0.15')).toBeInTheDocument()
+      expect(screen.getByText('Clip kWh')).toBeInTheDocument()
+      expect(screen.getByText('XLoad kWh')).toBeInTheDocument()
+      expect(screen.getByText('0.40')).toBeInTheDocument()
     })
   })
 

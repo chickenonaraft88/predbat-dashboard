@@ -22,12 +22,15 @@ export function PlanTable({
   plan,
   hoveredTime,
   onHoverRow,
+  debugColumns = false,
 }: {
   plan: RawPlan
   /** The row time (matches PlanRow.time) the chart currently has hovered, or null/undefined for none. */
   hoveredTime?: string | null
   /** Called with a row's time on row hover, and null on mouse-leave - lets the chart mirror it. */
   onHoverRow?: (time: string | null) => void
+  /** Shows effective (loss-adjusted) rate, PV10/Load10 forecast brackets, clipped kWh and XLoad kWh columns. */
+  debugColumns?: boolean
 }) {
   const { rows } = plan
   const showCar = plan.num_cars > 0
@@ -57,7 +60,9 @@ export function PlanTable({
     car_charging: showCar ? sumRows(rows, 'car_charging') : undefined,
     iboost: showIboost ? sumRows(rows, 'iboost') : undefined,
     total_carbon: showCarbon ? sumRows(rows, 'total_carbon') : undefined,
+    extra_load: debugColumns ? sumRows(rows, 'extra_load') : undefined,
   }
+  const leadingColSpan = debugColumns ? 6 : 4
 
   return (
     <div className="max-h-[32rem] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
@@ -67,12 +72,15 @@ export function PlanTable({
             <th className="px-3 py-2">Time</th>
             <th className="px-3 py-2">State</th>
             <th className="px-3 py-2 text-right">Import p/kWh</th>
-            <th className="px-3 py-2 text-right">Import adj</th>
+            {debugColumns && <th className="px-3 py-2 text-right">Import eff</th>}
             <th className="px-3 py-2 text-right">Export p/kWh</th>
-            <th className="px-3 py-2 text-right">Export adj</th>
+            {debugColumns && <th className="px-3 py-2 text-right">Export eff</th>}
             <th className="px-3 py-2 text-right">PV kWh</th>
+            {debugColumns && <th className="px-3 py-2 text-right">PV10 kWh</th>}
             <th className="px-3 py-2 text-right">Load kWh</th>
-            <th className="px-3 py-2 text-right">Clip kWh</th>
+            {debugColumns && <th className="px-3 py-2 text-right">Load10 kWh</th>}
+            {debugColumns && <th className="px-3 py-2 text-right">Clip kWh</th>}
+            {debugColumns && <th className="px-3 py-2 text-right">XLoad kWh</th>}
             {showCar && <th className="px-3 py-2 text-right">Car kWh</th>}
             {showIboost && <th className="px-3 py-2 text-right">iBoost kWh</th>}
             {showCarbon && <th className="px-3 py-2 text-right">CO2 g/kWh</th>}
@@ -133,14 +141,17 @@ export function PlanTable({
               <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_import || undefined, color: textColorForBg(row.rate_color_import) }}>
                 {row.import_rate.toFixed(2)}
               </td>
-              <td className="px-3 py-1.5 text-right">{row.import_rate_adjusted.toFixed(2)}</td>
+              {debugColumns && <td className="px-3 py-1.5 text-right">{row.import_rate_adjusted.toFixed(2)}</td>}
               <td className="px-3 py-1.5 text-right" style={{ backgroundColor: row.rate_color_export || undefined, color: textColorForBg(row.rate_color_export) }}>
                 {row.export_rate.toFixed(2)}
               </td>
-              <td className="px-3 py-1.5 text-right">{row.export_rate_adjusted.toFixed(2)}</td>
+              {debugColumns && <td className="px-3 py-1.5 text-right">{row.export_rate_adjusted.toFixed(2)}</td>}
               <td className="px-3 py-1.5 text-right">{row.pv_forecast.toFixed(2)}</td>
+              {debugColumns && <td className="px-3 py-1.5 text-right">{(row.pv_forecast10 ?? 0).toFixed(2)}</td>}
               <td className="px-3 py-1.5 text-right">{row.load_forecast.toFixed(2)}</td>
-              <td className="px-3 py-1.5 text-right">{row.clipped.toFixed(2)}</td>
+              {debugColumns && <td className="px-3 py-1.5 text-right">{(row.load_forecast10 ?? 0).toFixed(2)}</td>}
+              {debugColumns && <td className="px-3 py-1.5 text-right">{row.clipped.toFixed(2)}</td>}
+              {debugColumns && <td className="px-3 py-1.5 text-right">{(row.extra_load ?? 0).toFixed(2)}</td>}
               {showCar && <td className="px-3 py-1.5 text-right">{(row.car_charging ?? 0).toFixed(2)}</td>}
               {showIboost && <td className="px-3 py-1.5 text-right">{(row.iboost ?? 0).toFixed(2)}</td>}
               {showCarbon && <td className="px-3 py-1.5 text-right">{(row.carbon_intensity ?? 0).toFixed(0)}</td>}
@@ -154,12 +165,15 @@ export function PlanTable({
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold dark:border-slate-700 dark:bg-slate-900">
-            <td className="px-3 py-1.5" colSpan={6}>
+            <td className="px-3 py-1.5" colSpan={leadingColSpan}>
               Totals
             </td>
             <td className="px-3 py-1.5 text-right">{totals.pv_forecast.toFixed(2)}</td>
+            {debugColumns && <td className="px-3 py-1.5 text-right"></td>}
             <td className="px-3 py-1.5 text-right">{totals.load_forecast.toFixed(2)}</td>
-            <td className="px-3 py-1.5 text-right">{totals.clipped.toFixed(2)}</td>
+            {debugColumns && <td className="px-3 py-1.5 text-right"></td>}
+            {debugColumns && <td className="px-3 py-1.5 text-right">{totals.clipped.toFixed(2)}</td>}
+            {debugColumns && <td className="px-3 py-1.5 text-right">{(totals.extra_load ?? 0).toFixed(2)}</td>}
             {showCar && <td className="px-3 py-1.5 text-right">{(totals.car_charging ?? 0).toFixed(2)}</td>}
             {showIboost && <td className="px-3 py-1.5 text-right">{(totals.iboost ?? 0).toFixed(2)}</td>}
             {showCarbon && <td className="px-3 py-1.5 text-right">{(totals.carbon_intensity ?? 0).toFixed(0)}</td>}

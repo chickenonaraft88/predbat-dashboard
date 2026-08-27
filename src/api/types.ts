@@ -48,6 +48,13 @@ export interface PlanRow {
   iboost?: number
   carbon_intensity?: number
   total_carbon?: number
+  /** Solcast's 10%-probability PV forecast bracket for the slot (output.py's `pv_forecast10`). */
+  pv_forecast10?: number
+  /** Load-variance-model forecast bracket for the slot (output.py's `load_forecast10`). */
+  load_forecast10?: number
+  /** Load added externally via `load_forecast` settings (PredAI/PredHeat/etc), output.py's `extra_load`. */
+  extra_load?: number
+  extra_load_total?: number
 }
 
 /**

@@ -1,8 +1,10 @@
 import { ConnectionBar } from './components/ConnectionBar'
+import { DebugColumnsToggle } from './components/DebugColumnsToggle'
 import { PlanChart } from './components/PlanChart'
 import { PlanTable } from './components/PlanTable'
 import { StalePlanBanner } from './components/StalePlanBanner'
 import { StatusCard } from './components/StatusCard'
+import { useDebugColumns } from './hooks/useDebugColumns'
 import { useNow } from './hooks/useNow'
 import { usePlanData } from './hooks/usePredbat'
 import { useSharedHover } from './hooks/useSharedHover'
@@ -11,6 +13,7 @@ function PlanSection() {
   const planData = usePlanData()
   const now = useNow()
   const { hoveredTime, setHoveredTime } = useSharedHover()
+  const [debugColumns, setDebugColumns] = useDebugColumns()
 
   if (planData.isLoading) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Loading plan...</p>
@@ -29,7 +32,8 @@ function PlanSection() {
     <div className="flex flex-col gap-4">
       <StalePlanBanner timestamp={plan.timestamp} now={now} />
       <PlanChart rows={rows} now={now} hoveredTime={hoveredTime} onHoverChange={setHoveredTime} />
-      <PlanTable plan={plan} hoveredTime={hoveredTime} onHoverRow={setHoveredTime} />
+      <DebugColumnsToggle enabled={debugColumns} onChange={setDebugColumns} />
+      <PlanTable plan={plan} hoveredTime={hoveredTime} onHoverRow={setHoveredTime} debugColumns={debugColumns} />
     </div>
   )
 }
