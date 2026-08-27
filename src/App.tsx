@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
-import type { PlanRow } from './api/types'
+import type { PlanRow, RawPlan } from './api/types'
+import { BaselineSummaryCard } from './components/BaselineSummaryCard'
 import { ConnectionBar } from './components/ConnectionBar'
 import { HistoryTable } from './components/HistoryTable'
 import { PlanChart } from './components/PlanChart'
@@ -15,7 +16,7 @@ const EMPTY_MESSAGE: Record<PlanView, string> = {
   baseline: 'Predbat has no baseline data for yesterday yet.',
 }
 
-function PlanTabContent({ view, rows }: { view: PlanView; rows: PlanRow[] }) {
+function PlanTabContent({ view, rows }: { view: 'plan' | 'history'; rows: PlanRow[] }) {
   if (rows.length === 0) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">{EMPTY_MESSAGE[view]}</p>
   }
@@ -24,6 +25,21 @@ function PlanTabContent({ view, rows }: { view: PlanView; rows: PlanRow[] }) {
     <div className="flex flex-col gap-4">
       <PlanChart rows={rows} />
       {view === 'history' ? <HistoryTable rows={rows} /> : <PlanTable rows={rows} />}
+    </div>
+  )
+}
+
+function BaselineTabContent({ yesterday, baseline }: { yesterday?: RawPlan; baseline?: RawPlan }) {
+  const rows = baseline?.rows ?? []
+  if (rows.length === 0) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{EMPTY_MESSAGE.baseline}</p>
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <BaselineSummaryCard actual={yesterday?.totals} baseline={baseline?.totals} />
+      <PlanChart rows={rows} />
+      <PlanTable rows={rows} />
     </div>
   )
 }
@@ -41,11 +57,10 @@ function PlanSection() {
 
       {planData.isLoading && <p className="text-sm text-slate-500 dark:text-slate-400">Loading plan...</p>}
       {planData.isError && <p className="text-sm text-red-600 dark:text-red-400">{(planData.error as Error).message}</p>}
-      {planData.isSuccess && (
-        <PlanTabContent
-          view={view}
-          rows={(view === 'plan' ? planData.data.plan?.rows : view === 'history' ? planData.data.yesterday?.rows : planData.data.baseline?.rows) ?? []}
-        />
+      {planData.isSuccess && view === 'plan' && <PlanTabContent view="plan" rows={planData.data.plan?.rows ?? []} />}
+      {planData.isSuccess && view === 'history' && <PlanTabContent view="history" rows={planData.data.yesterday?.rows ?? []} />}
+      {planData.isSuccess && view === 'baseline' && (
+        <BaselineTabContent yesterday={planData.data.yesterday ?? undefined} baseline={planData.data.baseline ?? undefined} />
       )}
     </section>
   )

@@ -50,7 +50,7 @@ describe('App', () => {
     expect(screen.queryByRole('columnheader', { name: 'Cost' })).toBeInTheDocument()
   })
 
-  it('switches to the Yesterday-without-Predbat view and shows the baseline rows', async () => {
+  it('switches to the Yesterday-without-Predbat view and shows the baseline rows plus a savings summary', async () => {
     const user = userEvent.setup()
     render(
       <TestProviders>
@@ -64,6 +64,8 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Yesterday without Predbat' })).toHaveAttribute('aria-selected', 'true'))
     expect(screen.getAllByRole('row').length).toBeGreaterThan(1)
+    // Sample fixture: baseline.totals.total_cost (6.25) - yesterday.totals.total_cost (1.94) = 4.31.
+    expect(await screen.findByText('+4.31')).toBeInTheDocument()
   })
 
   it('shows the plan view by default with the Plan tab selected', async () => {
