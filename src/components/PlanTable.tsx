@@ -1,5 +1,9 @@
+import { useEffect, useRef } from 'react'
+
 import type { PlanRow, RawPlan } from '../api/types'
+import { useNow } from '../hooks/useNow'
 import { textColorForBg } from '../lib/planColors'
+import { findCurrentRowIndex } from '../lib/planTime'
 import { resolveReasons } from '../lib/reasons'
 import { ReasonTooltip } from './ReasonTooltip'
 
@@ -19,6 +23,18 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
   const showCar = plan.num_cars > 0
   const showIboost = plan.iboost_enable
   const showCarbon = plan.carbon_enable
+
+  const now = useNow()
+  const currentRowIndex = findCurrentRowIndex(rows, now)
+  const currentRowRef = useRef<HTMLTableRowElement | null>(null)
+  const hasAutoScrolled = useRef(false)
+
+  useEffect(() => {
+    if (!hasAutoScrolled.current && currentRowIndex >= 0 && currentRowRef.current) {
+      currentRowRef.current.scrollIntoView?.({ block: 'center' })
+      hasAutoScrolled.current = true
+    }
+  }, [currentRowIndex])
 
   // The API sends a precomputed `totals` object; fall back to summing rows for
   // fixtures/older Predbat releases that don't yet publish it.
@@ -57,10 +73,21 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const reasonTexts = resolveReasons(row.reasons, plan.reason_templates)
+            const isNow = index === currentRowIndex
             return (
-            <tr key={row.time} className="bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40">
+            <tr
+              key={row.time}
+              ref={isNow ? currentRowRef : undefined}
+              data-testid={isNow ? 'now-row' : undefined}
+              aria-current={isNow ? 'time' : undefined}
+              className={
+                isNow
+                  ? 'bg-sky-100 outline outline-2 -outline-offset-2 outline-sky-500 dark:bg-sky-950/50 dark:outline-sky-400'
+                  : 'bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40'
+              }
+            >
               <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{formatTime(row.time)}</td>
               <td className="p-0 font-medium" data-testid="state-cell">
                 <ReasonTooltip reasons={reasonTexts}>

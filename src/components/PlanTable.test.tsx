@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PlanTable } from './PlanTable'
 import { makePlanRow, samplePlanData } from '../test/msw/handlers'
@@ -169,6 +169,40 @@ describe('PlanTable', () => {
     render(<PlanTable plan={makePlan({ rows })} />)
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  describe('the "now" row', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('highlights the row whose slot contains the mocked current time', () => {
+      vi.setSystemTime(new Date('2026-08-26T12:45:00+01:00'))
+      const rows = [
+        makePlanRow({ time: '2026-08-26T12:00:00+01:00', state_text: 'Before' }),
+        makePlanRow({ time: '2026-08-26T12:30:00+01:00', state_text: 'DuringNow' }),
+        makePlanRow({ time: '2026-08-26T13:00:00+01:00', state_text: 'After' }),
+      ]
+
+      render(<PlanTable plan={makePlan({ rows })} />)
+
+      const nowRow = screen.getByTestId('now-row')
+      expect(nowRow).toHaveAttribute('aria-current', 'time')
+      expect(nowRow.textContent).toContain('DuringNow')
+    })
+
+    it('does not highlight any row when now falls outside the plan', () => {
+      vi.setSystemTime(new Date('2026-08-26T09:00:00+01:00'))
+      const rows = [makePlanRow({ time: '2026-08-26T12:00:00+01:00' })]
+
+      render(<PlanTable plan={makePlan({ rows })} />)
+
+      expect(screen.queryByTestId('now-row')).not.toBeInTheDocument()
+    })
   })
 
   it('only shows Car/iBoost/Carbon columns when the corresponding plan metadata is set', () => {

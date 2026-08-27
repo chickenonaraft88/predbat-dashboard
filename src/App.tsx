@@ -1,11 +1,14 @@
 import { ConnectionBar } from './components/ConnectionBar'
 import { PlanChart } from './components/PlanChart'
 import { PlanTable } from './components/PlanTable'
+import { StalePlanBanner } from './components/StalePlanBanner'
 import { StatusCard } from './components/StatusCard'
+import { useNow } from './hooks/useNow'
 import { usePlanData } from './hooks/usePredbat'
 
 function PlanSection() {
   const planData = usePlanData()
+  const now = useNow()
 
   if (planData.isLoading) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Loading plan...</p>
@@ -22,7 +25,8 @@ function PlanSection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PlanChart rows={rows} />
+      <StalePlanBanner timestamp={plan.timestamp} now={now} />
+      <PlanChart rows={rows} now={now} />
       <PlanTable plan={plan} />
     </div>
   )
