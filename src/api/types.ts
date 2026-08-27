@@ -35,6 +35,24 @@ export interface PlanRow {
   total_carbon?: number
 }
 
+/**
+ * End-of-plan running totals (`output.py`'s `raw_plan["totals"]`, ~lines
+ * 1776-1792). `extra_load`/`car_charging`/`iboost`/`carbon_intensity`/`total_carbon`
+ * are only present when the corresponding plan feature is enabled/configured.
+ */
+export interface PlanTotals {
+  total_cost: number
+  pv_forecast: number
+  load_forecast: number
+  clipped: number
+  soc_percent: number
+  extra_load?: number
+  car_charging?: number
+  iboost?: number
+  carbon_intensity?: number
+  total_carbon?: number
+}
+
 export interface RawPlan {
   rows: PlanRow[]
   soc: number
@@ -50,6 +68,8 @@ export interface RawPlan {
   carbon_enable: boolean
   currency_symbols: string[] | string
   timestamp: string
+  /** Absent on older Predbat releases - callers should fall back to summing `rows`. */
+  totals?: PlanTotals
 }
 
 export interface YesterdayJson {

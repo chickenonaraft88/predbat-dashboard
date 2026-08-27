@@ -51,6 +51,13 @@ export const samplePlanData = {
     carbon_enable: false,
     currency_symbols: 'p',
     timestamp: '2026-08-26T12:00:00+01:00',
+    totals: {
+      total_cost: 1.23,
+      pv_forecast: 0,
+      load_forecast: 0.2,
+      clipped: 0,
+      soc_percent: 62,
+    },
   },
   yesterday: null,
   baseline: null,

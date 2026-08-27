@@ -14,15 +14,16 @@ function PlanSection() {
     return <p className="text-sm text-red-600 dark:text-red-400">{(planData.error as Error).message}</p>
   }
 
-  const rows = planData.data?.plan?.rows ?? []
-  if (rows.length === 0) {
+  const plan = planData.data?.plan
+  const rows = plan?.rows ?? []
+  if (!plan || rows.length === 0) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Predbat has not published a plan yet.</p>
   }
 
   return (
     <div className="flex flex-col gap-4">
       <PlanChart rows={rows} />
-      <PlanTable rows={rows} />
+      <PlanTable plan={plan} />
     </div>
   )
 }
