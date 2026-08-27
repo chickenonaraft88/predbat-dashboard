@@ -32,6 +32,11 @@ New code needs tests. The stack:
 
 CI (`.github/workflows/ci.yml`) runs `lint`, `build` (typechecks via `tsc -b`), and `test` on every push and pull request - a PR isn't done until all three are green.
 
+## Known gaps
+
+- **Dark mode isn't actually wired up.** `src/index.css` defines dark mode as a class-based Tailwind v4 custom variant (`@custom-variant dark (&:where(.dark, .dark *));`), and components throughout already use `dark:` classes correctly - but nothing in the app adds that `.dark` class based on `prefers-color-scheme` (or any toggle). As shipped, the app is always in light mode regardless of OS theme, despite the README/this file's stack description saying it follows the OS theme. To preview dark mode today you have to force it manually, e.g. `document.documentElement.classList.add('dark')` in the browser console or via Playwright's `page.evaluate(...)` after navigation. Fixing this properly means adding a `matchMedia('(prefers-color-scheme: dark)')` listener (and ideally a manual override, persisted like the connection bar's URL) that toggles the class on `<html>`.
+- **The Plan table has no mobile layout.** At narrow viewports (e.g. 390px) the table doesn't reflow at all - most columns render off-screen behind the table container's own horizontal scroll rather than adapting. A dedicated fix (e.g. a condensed card-per-slot layout below some breakpoint) is still open.
+
 ## Keep PRs small and self-contained
 
 Prefer several small, reviewable PRs over one large one. A PR should do one thing - a feature, a fix, a docs update, a tooling change - not several unrelated things bundled together. If a task naturally splits (e.g. "add a feature" and "document the convention that feature establishes"), open it as separate PRs, stacking the dependent one on the branch that introduces what it depends on (`head` = the new branch, `base` = the branch it builds on, not `main`) rather than folding everything into a single diff. This keeps each PR reviewable on its own and keeps the "why" of each change legible in its own commit/PR history.
