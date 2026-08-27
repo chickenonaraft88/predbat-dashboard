@@ -5,10 +5,12 @@ import { StalePlanBanner } from './components/StalePlanBanner'
 import { StatusCard } from './components/StatusCard'
 import { useNow } from './hooks/useNow'
 import { usePlanData } from './hooks/usePredbat'
+import { useSharedHover } from './hooks/useSharedHover'
 
 function PlanSection() {
   const planData = usePlanData()
   const now = useNow()
+  const { hoveredTime, setHoveredTime } = useSharedHover()
 
   if (planData.isLoading) {
     return <p className="text-sm text-slate-500 dark:text-slate-400">Loading plan...</p>
@@ -26,8 +28,8 @@ function PlanSection() {
   return (
     <div className="flex flex-col gap-4">
       <StalePlanBanner timestamp={plan.timestamp} now={now} />
-      <PlanChart rows={rows} now={now} />
-      <PlanTable plan={plan} />
+      <PlanChart rows={rows} now={now} hoveredTime={hoveredTime} onHoverChange={setHoveredTime} />
+      <PlanTable plan={plan} hoveredTime={hoveredTime} onHoverRow={setHoveredTime} />
     </div>
   )
 }

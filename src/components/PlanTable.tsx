@@ -18,7 +18,17 @@ function sumRows(rows: PlanRow[], key: keyof PlanRow): number {
   }, 0)
 }
 
-export function PlanTable({ plan }: { plan: RawPlan }) {
+export function PlanTable({
+  plan,
+  hoveredTime,
+  onHoverRow,
+}: {
+  plan: RawPlan
+  /** The row time (matches PlanRow.time) the chart currently has hovered, or null/undefined for none. */
+  hoveredTime?: string | null
+  /** Called with a row's time on row hover, and null on mouse-leave - lets the chart mirror it. */
+  onHoverRow?: (time: string | null) => void
+}) {
   const { rows } = plan
   const showCar = plan.num_cars > 0
   const showIboost = plan.iboost_enable
@@ -76,17 +86,18 @@ export function PlanTable({ plan }: { plan: RawPlan }) {
           {rows.map((row, index) => {
             const reasonTexts = resolveReasons(row.reasons, plan.reason_templates)
             const isNow = index === currentRowIndex
+            const isHovered = hoveredTime != null && row.time === hoveredTime
+            const rowClasses = [isNow ? 'bg-sky-100 outline outline-2 -outline-offset-2 outline-sky-500 dark:bg-sky-950/50 dark:outline-sky-400' : 'bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40']
+            if (isHovered) rowClasses.push('ring-2 ring-inset ring-indigo-400 dark:ring-indigo-500')
             return (
             <tr
               key={row.time}
               ref={isNow ? currentRowRef : undefined}
-              data-testid={isNow ? 'now-row' : undefined}
+              data-testid={isNow ? 'now-row' : isHovered ? 'hovered-row' : undefined}
               aria-current={isNow ? 'time' : undefined}
-              className={
-                isNow
-                  ? 'bg-sky-100 outline outline-2 -outline-offset-2 outline-sky-500 dark:bg-sky-950/50 dark:outline-sky-400'
-                  : 'bg-white odd:bg-slate-50 dark:bg-slate-900 dark:odd:bg-slate-950/40'
-              }
+              className={rowClasses.join(' ')}
+              onMouseEnter={() => onHoverRow?.(row.time)}
+              onMouseLeave={() => onHoverRow?.(null)}
             >
               <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{formatTime(row.time)}</td>
               <td className="p-0 font-medium" data-testid="state-cell">

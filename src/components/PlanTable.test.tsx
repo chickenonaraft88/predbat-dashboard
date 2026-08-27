@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -202,6 +202,39 @@ describe('PlanTable', () => {
       render(<PlanTable plan={makePlan({ rows })} />)
 
       expect(screen.queryByTestId('now-row')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('hover sync', () => {
+    it('calls onHoverRow with the row time on mouse enter, and null on mouse leave', () => {
+      const onHoverRow = vi.fn()
+      const rows = [makePlanRow({ time: '2026-08-26T12:00:00+01:00', state_text: 'Row0' }), makePlanRow({ time: '2026-08-26T12:30:00+01:00', state_text: 'Row1' })]
+
+      render(<PlanTable plan={makePlan({ rows })} onHoverRow={onHoverRow} />)
+
+      const targetRow = screen.getByText('Row1').closest('tr')!
+      fireEvent.mouseEnter(targetRow)
+      expect(onHoverRow).toHaveBeenCalledWith('2026-08-26T12:30:00+01:00')
+
+      fireEvent.mouseLeave(targetRow)
+      expect(onHoverRow).toHaveBeenCalledWith(null)
+    })
+
+    it('highlights the row matching hoveredTime', () => {
+      const rows = [makePlanRow({ time: '2026-08-26T12:00:00+01:00', state_text: 'Row0' }), makePlanRow({ time: '2026-08-26T12:30:00+01:00', state_text: 'Row1' })]
+
+      render(<PlanTable plan={makePlan({ rows })} hoveredTime="2026-08-26T12:30:00+01:00" />)
+
+      const hoveredRow = screen.getByTestId('hovered-row')
+      expect(hoveredRow.textContent).toContain('Row1')
+    })
+
+    it('highlights no row when hoveredTime is null', () => {
+      const rows = [makePlanRow({ time: '2026-08-26T12:00:00+01:00' })]
+
+      render(<PlanTable plan={makePlan({ rows })} hoveredTime={null} />)
+
+      expect(screen.queryByTestId('hovered-row')).not.toBeInTheDocument()
     })
   })
 
